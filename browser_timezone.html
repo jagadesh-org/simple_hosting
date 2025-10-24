@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Browser timezone vs IP timezone</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;display:flex;min-height:100vh;align-items:center;justify-content:center;background:#f6f7fb;margin:0}
+    .card{background:white;padding:24px;border-radius:12px;box-shadow:0 6px 20px rgba(20,30,60,0.08);width:min(720px,94vw)}
+    h1{margin:0 0 8px;font-size:20px}
+    p{margin:6px 0}
+    .row{display:flex;gap:12px;align-items:center;margin-top:12px}
+    .box{flex:1;padding:12px;border-radius:8px;background:#fbfdff;border:1px solid #eef2ff}
+    code{display:block;font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;background:#f3f6ff;padding:6px;border-radius:6px}
+    .muted{color:#6b7280;font-size:13px}
+    .small{font-size:13px}
+    button{padding:8px 10px;border-radius:8px;border:1px solid #dbeafe;background:#fff;cursor:pointer}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Browser timezone vs IP timezone</h1>
+    <p class="muted">This page shows the timezone reported by your browser and the timezone inferred from your public IP address (via a free IP geolocation API).</p>
+
+    <div class="row">
+      <div class="box">
+        <strong>Browser timezone</strong>
+        <div id="browser-tz" class="small">Loading...</div>
+        <div class="muted" id="browser-offset"></div>
+      </div>
+
+      <div class="box">
+        <strong>IP timezone</strong>
+        <div id="ip-tz" class="small">Loading...</div>
+        <div class="muted" id="ip-provider"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:14px;display:flex;gap:8px;align-items:center">
+      <button id="refresh">Refresh</button>
+      <button id="copy" title="Copy timezones to clipboard">Copy results</button>
+      <div class="muted" style="margin-left:auto">API used: <code style="display:inline-block;padding:2px 6px;font-size:12px">https://ipapi.co/json/</code></div>
+    </div>
+
+    <p class="muted" style="margin-top:10px">Note: IP-based timezone is approximate and depends on the IP geolocation provider.</p>
+  </div>
+
+  <script>
+    // Utility to get browser timezone and offset
+    function getBrowserTimezone() {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'unknown';
+      const now = new Date();
+      // offset in minutes (note: getTimezoneOffset returns minutes behind UTC)
+      const offsetMinutes = -now.getTimezoneOffset();
+      const sign = offsetMinutes >= 0 ? '+' : '-';
+      const hh = Math.floor(Math.abs(offsetMinutes) / 60).toString().padStart(2,'0');
+      const mm = (Math.abs(offsetMinutes) % 60).toString().padStart(2,'0');
+      const offsetStr = `UTC${sign}${hh}:${mm}`;
+      return { tz, offsetStr };
+    }
+
+    async function getIpTimezone() {
+      try {
+        // Using ipapi.co which returns a JSON with a `timezone` field
+        const res = await fetch('https://ipapi.co/json/');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const j = await res.json();
+        // Example fields: timezone, city, region, country_name, org
+        return {
+          tz: j.timezone || 'unknown',
+          provider: `${j.city || ''}${j.region ? ', ' + j.region : ''}${j.country_name ? ', ' + j.country_name : ''}`.replace(/^,\s*/,'') || 'location unknown',
+          raw: j
+        };
+      } catch (err) {
+        return { tz: 'error: ' + err.message, provider: '', raw: null };
+      }
+    }
+
+    async function updateAll() {
+      const b = getBrowserTimezone();
+      document.getElementById('browser-tz').textContent = b.tz;
+      document.getElementById('browser-offset').textContent = b.offsetStr;
+
+      document.getElementById('ip-tz').textContent = 'Loading...';
+      document.getElementById('ip-provider').textContent = '';
+
+      const ip = await getIpTimezone();
+      document.getElementById('ip-tz').textContent = ip.tz;
+      document.getElementById('ip-provider').textContent = ip.provider ? ip.provider : '';
+
+      // store for copy
+      window.__tzSnapshot = { browser: b, ip };
+    }
+
+    document.getElementById('refresh').addEventListener('click', updateAll);
+    document.getElementById('copy').addEventListener('click', async () => {
+      const s = window.__tzSnapshot;
+      if (!s) return;
+      const text = `Browser timezone: ${s.browser.tz} (${s.browser.offsetStr})\nIP timezone: ${s.ip.tz} (${s.ip.provider})`;
+      try {
+        await navigator.clipboard.writeText(text);
+        alert('Copied to clipboard');
+      } catch (e) {
+        prompt('Copy the text manually:', text);
+      }
+    });
+
+    // Run on load
+    updateAll();
+  </script>
+</body>
+</html>
