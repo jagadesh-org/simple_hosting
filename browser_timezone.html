@@ -20,7 +20,7 @@
 <body>
   <div class="card">
     <h1>Browser timezone vs IP timezone</h1>
-    <p class="muted">This page shows the timezone reported by your browser and the timezone inferred from your public IP address (via a free IP geolocation API).</p>
+    <p class="muted">This page shows the timezone reported by your browser and the timezone inferred from your public IP address using fallback IP APIs.</p>
 
     <div class="row">
       <div class="box">
@@ -39,10 +39,9 @@
     <div style="margin-top:14px;display:flex;gap:8px;align-items:center">
       <button id="refresh">Refresh</button>
       <button id="copy" title="Copy timezones to clipboard">Copy results</button>
-      <div class="muted" style="margin-left:auto">API used: <code style="display:inline-block;padding:2px 6px;font-size:12px">https://ipapi.co/json/</code></div>
     </div>
 
-    <p class="muted" style="margin-top:10px">Note: IP-based timezone is approximate and depends on the IP geolocation provider.</p>
+    <p class="muted" style="margin-top:10px">Note: IP-based timezone is approximate and depends on the IP geolocation providers (ipapi.co, ipinfo.io, ipwho.is).</p>
   </div>
 
   <script>
@@ -50,7 +49,6 @@
     function getBrowserTimezone() {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'unknown';
       const now = new Date();
-      // offset in minutes (note: getTimezoneOffset returns minutes behind UTC)
       const offsetMinutes = -now.getTimezoneOffset();
       const sign = offsetMinutes >= 0 ? '+' : '-';
       const hh = Math.floor(Math.abs(offsetMinutes) / 60).toString().padStart(2,'0');
@@ -59,21 +57,32 @@
       return { tz, offsetStr };
     }
 
+    // Fallback chain of IP timezone APIs
     async function getIpTimezone() {
-      try {
-        // Using ipapi.co which returns a JSON with a `timezone` field
-        const res = await fetch('https://ipapi.co/json/');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const j = await res.json();
-        // Example fields: timezone, city, region, country_name, org
-        return {
-          tz: j.timezone || 'unknown',
-          provider: `${j.city || ''}${j.region ? ', ' + j.region : ''}${j.country_name ? ', ' + j.country_name : ''}`.replace(/^,\s*/,'') || 'location unknown',
-          raw: j
-        };
-      } catch (err) {
-        return { tz: 'error: ' + err.message, provider: '', raw: null };
+      const sources = [
+        { name: 'ipapi.co', url: 'https://ipapi.co/json/', tz: j => j.timezone, loc: j => `${j.city || ''}, ${j.region || ''}, ${j.country_name || ''}` },
+        { name: 'ipinfo.io', url: 'https://ipinfo.io/json', tz: j => j.timezone, loc: j => `${j.city || ''}, ${j.region || ''}, ${j.country || ''}` },
+        { name: 'ipwho.is', url: 'https://ipwho.is/', tz: j => j.timezone?.id, loc: j => `${j.city || ''}, ${j.region || ''}, ${j.country || ''}` }
+      ];
+
+      for (const src of sources) {
+        try {
+          const res = await fetch(src.url);
+          if (!res.ok) throw new Error(`${src.name} failed (${res.status})`);
+          const j = await res.json();
+          const tz = src.tz(j);
+          if (tz) {
+            return {
+              tz,
+              provider: `${src.name} — ${src.loc(j)}`.replace(/^\s*,\s*|,\s*$/g, '') || src.name,
+              raw: j
+            };
+          }
+        } catch (err) {
+          console.warn(`[${src.name}] ${err.message}`);
+        }
       }
+      return { tz: 'All IP APIs failed', provider: '', raw: null };
     }
 
     async function updateAll() {
@@ -86,9 +95,8 @@
 
       const ip = await getIpTimezone();
       document.getElementById('ip-tz').textContent = ip.tz;
-      document.getElementById('ip-provider').textContent = ip.provider ? ip.provider : '';
+      document.getElementById('ip-provider').textContent = ip.provider || '';
 
-      // store for copy
       window.__tzSnapshot = { browser: b, ip };
     }
 
