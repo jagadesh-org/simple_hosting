@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contact Form</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+  <div class="bg-white shadow-lg rounded-2xl p-8 w-full max-w-xl">
+    <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Get in Touch</h1>
+
+    <form id="contactForm" class="space-y-6">
+      <!-- Question 1 -->
+      <div>
+        <label class="block text-gray-700 font-semibold mb-2">1. What’s your full name?</label>
+        <input type="text" name="name" required placeholder="Enter your name"
+          class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+      </div>
+
+      <!-- Question 2 -->
+      <div>
+        <label class="block text-gray-700 font-semibold mb-2">2. What’s your email address?</label>
+        <input type="email" name="email" required placeholder="you@example.com"
+          class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+      </div>
+
+      <!-- Question 3 -->
+      <div>
+        <label class="block text-gray-700 font-semibold mb-2">3. What’s your phone number?</label>
+        <input type="tel" name="phone" placeholder="+1 234 567 890"
+          class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+      </div>
+
+      <!-- Question 4 -->
+      <div>
+        <label class="block text-gray-700 font-semibold mb-2">4. What’s your company or organization?</label>
+        <input type="text" name="company" placeholder="Company name"
+          class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+      </div>
+
+      <!-- Question 5 -->
+      <div>
+        <label class="block text-gray-700 font-semibold mb-2">5. What is the main reason you’re contacting us?</label>
+        <input type="text" name="reason" placeholder="E.g., Support, Collaboration, Feedback..."
+          class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500">
+      </div>
+
+      <!-- Question 6 -->
+      <div>
+        <label class="block text-gray-700 font-semibold mb-2">6. Could you describe your message briefly?</label>
+        <textarea name="message" rows="3" required placeholder="Type your message here..."
+          class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+      </div>
+
+      <!-- Question 7 -->
+      <div>
+        <label class="block text-gray-700 font-semibold mb-3">7. Where did you hear about us?</label>
+        <div id="sourceOptions" class="flex flex-wrap gap-2">
+          <button type="button" data-value="TikTok"
+            class="option-btn px-4 py-2 rounded-full border border-gray-300 text-gray-700 hover:bg-blue-100">
+            TikTok
+          </button>
+          <button type="button" data-value="Instagram"
+            class="option-btn px-4 py-2 rounded-full border border-gray-300 text-gray-700 hover:bg-blue-100">
+            Instagram
+          </button>
+          <button type="button" data-value="Facebook"
+            class="option-btn px-4 py-2 rounded-full border border-gray-300 text-gray-700 hover:bg-blue-100">
+            Facebook
+          </button>
+          <button type="button" data-value="Twitter"
+            class="option-btn px-4 py-2 rounded-full border border-gray-300 text-gray-700 hover:bg-blue-100">
+            Twitter
+          </button>
+          <button type="button" data-value="WhatsApp"
+            class="option-btn px-4 py-2 rounded-full border border-gray-300 text-gray-700 hover:bg-blue-100">
+            WhatsApp
+          </button>
+          <button type="button" data-value="Discord"
+            class="option-btn px-4 py-2 rounded-full border border-gray-300 text-gray-700 hover:bg-blue-100">
+            Discord
+          </button>
+        </div>
+        <input type="hidden" name="sources" id="selectedSources">
+      </div>
+
+      <!-- Submit -->
+      <div class="text-center">
+        <button type="submit" 
+          class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition duration-200">
+          Send Message
+        </button>
+      </div>
+    </form>
+
+    <!-- Success Message -->
+    <div id="successMessage" class="hidden text-center mt-6 text-green-600 font-semibold">
+      ✅ Thank you! Your response has been recorded.
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('contactForm');
+    const successMessage = document.getElementById('successMessage');
+    const optionButtons = document.querySelectorAll('.option-btn');
+    const selectedInput = document.getElementById('selectedSources');
+    const selected = new Set();
+
+    optionButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const val = btn.dataset.value;
+        if (selected.has(val)) {
+          selected.delete(val);
+          btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600');
+        } else {
+          selected.add(val);
+          btn.classList.add('bg-blue-600', 'text-white', 'border-blue-600');
+        }
+        selectedInput.value = Array.from(selected).join(', ');
+      });
+    });
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      form.classList.add('opacity-50', 'pointer-events-none');
+      successMessage.classList.remove('hidden');
+      form.reset();
+      selected.clear();
+      optionButtons.forEach(btn => btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600'));
+      selectedInput.value = '';
+    });
+  </script>
+</body>
+</html>
